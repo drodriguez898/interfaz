@@ -1,0 +1,138 @@
+REGISTRO DE HOGARES
+
+ABRIR EL PROYECTO
+1. Descomprime el ZIP y abre la carpeta RegistroHogar en NetBeans.
+   Usa JDK 17. El proyecto incluye el controlador de Oracle.
+2. En el mismo servicio de Oracle, pide a quien administra la base
+   que ejecute oracle/01_crear_esquemas.sql en SQL*Plus. En instalaciones
+   multitenant debe conectarse al PDB que contiene tus tablas.
+3. Desde esa sesión de DBA, usa PASSWORD RH_APP_ACCESO, PASSWORD RH_APP_ADMIN,
+   PASSWORD RH_APP_ENC y PASSWORD RH_APP_JEFE para definir sus cuatro
+   contraseñas de Oracle. Cada comando pide escribirla dos veces.
+4. Como dueño de las tablas, ejecuta oracle/02_permisos_y_disparadores.sql.
+   Si faltan las columnas de acceso o revisión, ejecuta antes actualizar_roles.sql.
+   Una vez instalados los disparadores, el DBA ejecuta
+   oracle/03_habilitar_esquemas.sql.
+5. Copia oracle/conexiones-oracle.ejemplo.properties a tu carpeta de
+   usuario con el nombre conexiones-oracle.properties. En Windows es
+   %USERPROFILE%. Rellena las cuatro contraseñas. Si tu conexión usa una
+   URL o un dueño distintos de los del ZIP original, indícalos ahí.
+   Puedes ubicar el archivo en otro lugar indicando su ruta en la variable
+   de entorno RH_ORACLE_CONFIG disponible antes de iniciar NetBeans.
+   Si ya habías ejecutado el script 02 de la versión anterior, ejecuta
+   oracle/04_actualizar_eliminacion.sql y oracle/05_eliminar_hogares.sql
+   como dueño de las tablas.
+6. En NetBeans, usa Clean and Build y Run Project. Entra con el documento
+   y la contraseña de Registro de hogares que ya tenías.
+
+ORACLE
+Las tablas y los datos siguen en el esquema dueño. RH_APP_ACCESO solo
+lee la vista de autenticación. Después de autenticar, el programa usa
+RH_APP_ADMIN, RH_APP_ENC o RH_APP_JEFE. Los roles de Oracle conceden las
+operaciones sobre tablas completas. Las vistas de solo lectura evitan
+exponer los hashes de encuestados y encuestadores a los roles de campo.
+Solo RH_APP_JEFE recibe SELECT sobre SEQ_ARTICULO, que usa el catálogo.
+
+Administrador: escribe en HOGAR, ENCUESTADO, ENCUESTADOR, ENCUESTA, GASTO
+OBSERVACION y VISITA. Al eliminar un hogar, el administrador también
+puede eliminar DIACICLO y los registros relacionados. El alta inicial sigue siendo una
+operación del dueño del esquema sobre COORDINADOR.
+Encuestador: inserta en VISITA y actualiza ENCUESTA y OBSERVACION.
+Jefe de hogar: registra y actualiza GASTO y DIACICLO, inicia ENCUESTA,
+registra ARTICULO y puede eliminar gastos de días abiertos.
+El filtro por hogar sigue en Java. Las cuentas Oracle son técnicas y
+cualquier persona con acceso a sus contraseñas puede usar los permisos
+de ese rol por SQL directo. Mantén el archivo de contraseñas restringido
+al equipo autorizado y fuera del ZIP y del control de versiones.
+
+Los cuatro disparadores controlan las escrituras de GASTO, DIACICLO,
+ENCUESTA y VISITA. Su estado se puede comprobar como dueño de las tablas:
+
+SELECT OBJECT_NAME, STATUS FROM USER_OBJECTS WHERE OBJECT_TYPE = 'TRIGGER' AND OBJECT_NAME IN ('RH_GASTO_EDITABLE','RH_DIA_CIERRE','RH_ENCUESTA_FLUJO','RH_VISITA_ASIGNADA');
+
+Cada uno debe aparecer como VALID. Si hay un error de compilación,
+consulta USER_ERRORS en la misma conexión.
+
+ADMINISTRADOR
+- Hogares > Registrar hogar. Completa los datos del hogar y, en el mismo
+  formulario, el nombre, la edad, el documento y la contraseña de su jefe.
+  Al guardar se crean juntos el hogar y la cuenta. El jefe puede entrar
+  con el documento y la contraseña que se registraron.
+- Hogares > Eliminar hogar. Selecciona un hogar y confirma. La operación
+  elimina también sus integrantes, cuenta del jefe, encuestas, días,
+  gastos, observaciones y visitas. Toda la operación se hace en una
+  transacción y, si alguna referencia externa lo impide, se revierte.
+- Hogares > Asignar encuestador. Selecciona el hogar y elige un encuestador.
+  El mismo botón permite cambiar al responsable cuando ya hay uno.
+- Hogares > Configurar acceso del jefe. Se habilita para hogares antiguos
+  con cuenta pendiente. Selecciona una persona ya guardada en ese hogar
+  y configura su acceso.
+- Usuarios > Crear encuestador. Registra cuentas de encuestador.
+- Usuarios > Eliminar usuario. Selecciona un encuestador o jefe y confirma.
+  Si el encuestador tiene hogares o visitas relacionados, se elimina su
+  acceso conservando el registro histórico. Reasigna sus hogares a otro
+  encuestador. Si se vuelve a registrar el mismo documento, se recupera
+  el perfil y sus asignaciones. La cuenta del jefe se elimina conservando
+  al titular del hogar. Se puede configurar de nuevo desde Hogares.
+- Revisión de encuestas. Usa Corregir gasto para editar los gastos de una
+  encuesta abierta, en corrección o transmitida. El cambio se guarda en
+  el gasto y resuelve sus solicitudes pendientes. El cierre se aplica a
+  encuestas transmitidas y valida el ciclo.
+  Al seleccionar una encuesta cerrada, Generar informe permite guardar un
+  archivo PDF con las fechas, los responsables y los gastos. El informe se
+  guarda desde la aplicación y repite los encabezados en cada página.
+
+ENCUESTADOR
+Consulta sus hogares asignados y sus gastos. Registra visitas, verifica
+las correcciones y transmite la encuesta cuando el ciclo esté completo.
+
+JEFE DE HOGAR
+El selector muestra solamente los días sin cerrar. Al cerrar un día,
+regresa a Mi hogar y la lista se actualiza. Una vez cerrados los 14 días
+no es posible seleccionar otro. El encuestador puede consultar el ciclo.
+En Nuevo gasto usa Buscar o registrar artículo. Selecciona el tipo de medida
+Líquido, Peso, Unidades o Servicio para ver sus unidades. Los gastos previos
+con otras unidades conservan su valor cuando se editan.
+Consulta y registra gastos de su propio hogar, atiende correcciones y
+cierra los días del ciclo. Puede cerrar un día aunque no haya gastos.
+Los gastos de un día cerrado se pueden consultar. En Ver correcciones
+solicitadas puede leer las notas pendientes anteriores y abrir el gasto
+correspondiente. Las correcciones nuevas del administrador se aplican
+directamente al gasto.
+Para transmitir la encuesta se necesitan los 14 días cerrados, al menos
+un gasto en el ciclo y las observaciones resueltas.
+
+ESTRUCTURA DE PAQUETES
+src/
+  negocio/       Usuario, Rol y modelos de hogares, gastos y encuestas.
+  control/       Main.java, único punto de entrada.
+  persistencia/  ConexionOracle, RolesDAO, demás DAO y sesión autenticada.
+  presentacion/  AccesoForm, formularios, vistas y exportación visual a PDF.
+
+El ejemplo BibliotecaIncremento09 reúne modelos, Persistencia, formularios
+Presentacion y Main en src. RegistroHogar conserva esa separación de
+responsabilidades con los cuatro paquetes solicitados.
+
+INICIO DE SESIÓN
+Ingresa tu documento y contraseña. persistencia.RolesDAO consulta RH_ACCESO,
+que reúne administradores de COORDINADOR, encuestadores activos de ENCUESTADOR
+y jefes vinculados a un hogar de ENCUESTADO. Comprueba el hash de la contraseña y entrega
+el modelo negocio.Usuario. presentacion.AccesoForm abre la vista del rol.
+Si dos cuentas coinciden con el mismo documento y contraseña, se muestra
+un aviso. La autenticación usa las tablas y los hashes existentes.
+
+Para configurar o recuperar la cuenta de administrador, ejecuta
+control.Main con el argumento --configurar-admin. En NetBeans puedes
+indicarlo en Propiedades del proyecto > Ejecutar > Argumentos. Quita
+el argumento al volver al inicio de sesión normal.
+
+VERIFICACIÓN
+El proyecto compiló con destino Java 17. Una prueba JDBC simulada verificó
+la cuenta de conexión de cada rol, las credenciales inválidas y el cierre
+de sesión. Ejecuta los scripts y comprueba los disparadores y los accesos
+con el Oracle de la universidad.
+
+DEPARTAMENTOS Y MUNICIPIOS
+El selector contiene el listado DIVIPOLA descargado de datos.gov.co (DANE),
+incluidas las áreas no municipalizadas. El municipio también se puede escribir.
+Fuente: https://www.datos.gov.co/d/gdxc-w37w
