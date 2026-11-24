@@ -1,0 +1,9 @@
+-- Ejecutar como DBA después de establecer las cuatro contraseñas
+-- y después del mensaje de instalación del script 02.
+WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK
+ALTER USER RH_APP_ACCESO ACCOUNT UNLOCK;
+ALTER USER RH_APP_ADMIN ACCOUNT UNLOCK;
+ALTER USER RH_APP_ENC ACCOUNT UNLOCK;
+ALTER USER RH_APP_JEFE ACCOUNT UNLOCK;
+PROMPT Esquemas del programa habilitados.
+WHENEVER SQLERROR CONTINUE NONE
